@@ -64,3 +64,6 @@ k8s/
  └── overlays/
       ├── dev/
       └── prod/
+
+
+ docker-compose up -d --build     
