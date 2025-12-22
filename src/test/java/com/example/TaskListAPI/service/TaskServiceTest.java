@@ -76,7 +76,7 @@ class TaskServiceTest {
     void createTask_ShouldReturnTaskResponse_WhenValidRequest() {
         // Given
         when(taskMapper.toEntity(taskRequest)).thenReturn(task);
-        when(taskRepository.save(task)).thenReturn(task);
+        when(taskRepository.saveAndFlush(task)).thenReturn(task);
         when(taskMapper.toResponse(task)).thenReturn(taskResponse);
 
         // When
@@ -90,7 +90,7 @@ class TaskServiceTest {
         assertThat(result.getPriority()).isEqualTo(taskRequest.getPriority());
 
         verify(taskMapper).toEntity(taskRequest);
-        verify(taskRepository).save(task);
+        verify(taskRepository).saveAndFlush(task);
         verify(taskMapper).toResponse(task);
     }
 
