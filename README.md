@@ -46,7 +46,6 @@ TaskListAPI/
 # Ansible Playbooks
 ansible/
  ├── playbooks/
- │   ├── install_microk8s.yaml
  │   ├── setup_cluster.yaml
  │   ├── deploy_app.yaml
  │   └── rollback.yaml
@@ -130,3 +129,27 @@ kubectl get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 --decode
 
 username: admin
+
+
+# Ansible
+
+setup_cluster.yaml (Bootstrap Kubernetes + Argo CD)
+✔ Creates namespaces
+✔ Installs Argo CD
+✔ Waits for readiness
+run
+`ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/setup_cluster.yaml`
+
+deploy_app.yaml (GitOps Trigger)
+✔ Applies Argo CD Application
+✔ Argo deploys your app
+run
+`ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/deploy_app.yaml`
+
+rollback.yaml
+This performs a GitOps rollback using Argo CD history.
+run
+ansible-playbook \
+  -i ansible/inventory/hosts.ini \
+  ansible/playbooks/rollback.yaml \
+  -e revision=HEAD~1
