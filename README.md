@@ -92,8 +92,41 @@ microk8s kubectl apply -f k8s/base/secret.yaml
 microk8s kubectl apply -f k8s/base/deployment.yaml
 microk8s kubectl apply -f k8s/base/service.yaml
 microk8s kubectl apply -f k8s/base/ingress.yaml
+# OR 
+kubectl apply -f k8s/base/secret.yaml
+kubectl apply -f k8s/base/deployment.yaml
+kubectl apply -f k8s/base/service.yaml
+kubectl apply -f k8s/base/ingress.yaml
 
 # Verify pods:
 microk8s kubectl get pods
 microk8s kubectl get svc
 microk8s kubectl get ingress
+# OR
+kubectl get pods
+kubectl get svc
+kubectl get ingress
+
+
+# AgroCD 
+`Create namespace`
+kubectl create namespace argocd
+
+`Install Argo CD`
+kubectl apply -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+`Verify`
+kubectl get pods -n argocd
+
+`Port Forward (simplest)`
+kubectl port-forward svc/argocd-server -n argocd 8085:443
+`Access:`
+https://localhost:8085
+
+`Get Argo CD Admin Password`
+kubectl get secret argocd-initial-admin-secret \
+  -n argocd \
+  -o jsonpath="{.data.password}" | base64 --decode
+
+username: admin
