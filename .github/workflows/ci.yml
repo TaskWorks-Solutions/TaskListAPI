@@ -43,23 +43,43 @@ jobs:
 
       - name: Wait for Postgres to be ready
         run: |
-          until pg_isready -h localhost -p 5432; do
+          until pg_isready -h localhost -p 5432 -U tasklist_user; do
             echo "Waiting for Postgres..."
             sleep 2
           done
+          echo "Postgres is ready!"
 
-      - name: Run Maven tests with debug
-        run: mvn clean test -e -X
+      - name: Run Maven tests
+        run: mvn clean test -e
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tasklist
           SPRING_DATASOURCE_USERNAME: tasklist_user
           SPRING_DATASOURCE_PASSWORD: password
 
-      - name: Show Maven Surefire test logs
-        if: always()
+      - name: Display test results on failure
+        if: failure()
         run: |
-          echo "==== Maven Surefire Reports ===="
-          cat target/surefire-reports/*.txt || echo "No surefire reports found"
+          echo "=========================================="
+          echo "TEST FAILURE DETAILS"
+          echo "=========================================="
+          
+          if [ -d "target/surefire-reports" ]; then
+            for file in target/surefire-reports/*.txt; do
+              if [ -f "$file" ]; then
+                echo ""
+                echo "=== $(basename $file) ==="
+                cat "$file"
+              fi
+            done
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: target/surefire-reports/
+          retention-days: 7
 
   build:
     name: Build Application
@@ -79,10 +99,6 @@ jobs:
 
       - name: Build with Maven
         run: mvn clean package -DskipTests
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tasklist
-          SPRING_DATASOURCE_USERNAME: tasklist_user
-          SPRING_DATASOURCE_PASSWORD: password
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
