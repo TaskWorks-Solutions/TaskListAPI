@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasklist-backend
+  labels:
+    app: tasklist-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tasklist-backend
+  template:
+    metadata:
+      labels:
+        app: tasklist-backend
+    spec:
+      containers:
+        - name: backend
+          image: your-dockerhub-username/tasklist-backend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_URL
+              value: jdbc:postgresql://tasklist-postgres:5432/tasklist
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: tasklist-secrets
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tasklist-secrets
+                  key: DB_PASSWORD
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
