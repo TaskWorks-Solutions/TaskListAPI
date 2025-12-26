@@ -1,0 +1,14 @@
+- name: Rollback TaskList API via Argo CD
+  hosts: local
+  gather_facts: false
+
+  vars:
+    revision: "1"
+
+  tasks:
+    - name: Rollback Argo CD application
+      command: >
+        kubectl -n argocd
+        patch application tasklist-api
+        --type merge
+        -p '{"spec":{"source":{"targetRevision":"{{ revision }}"}}}'

@@ -1,0 +1,16 @@
+- name: Deploy TaskList API using Argo CD
+  hosts: local
+  gather_facts: false
+
+  tasks:
+    - name: Apply Argo CD Application
+      command: kubectl apply -f k8s/argocd/application.yaml
+      args:
+        chdir: "{{ playbook_dir }}/../.."
+
+    - name: Wait for Application to exist
+      command: kubectl get application tasklist-api -n argocd
+      retries: 5
+      delay: 10
+      register: app_status
+      until: app_status.rc == 0
