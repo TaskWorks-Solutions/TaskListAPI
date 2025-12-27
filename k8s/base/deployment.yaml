@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: backend
-          image: your-dockerhub-username/tasklist-backend:latest
+          image: ghcr.io/taskworks-solutions/tasklistapi:latest # Use the latest image
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
