@@ -153,3 +153,48 @@ ansible-playbook \
   -i ansible/inventory/hosts.ini \
   ansible/playbooks/rollback.yaml \
   -e revision=HEAD~1
+
+
+# If your wsl doesn't use systemd by default. Let's just add MetalLB to your existing cluster if you have one
+# Step 1: Install MetalLB
+`kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml`
+# Step 2: Wait for MetalLB
+kubectl wait --namespace metallb-system \
+  --for=condition=ready pod \
+  --selector=app=metallb \
+  --timeout=90s
+# Step 4: Check Your Network
+`kubectl get nodes -o wide`
+# Step 4: Configure IP Address Pool
+`mine is 192.168.49.2`
+# NB paste it in your terminal but confirm you IP Address Pool
+
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.49.100-192.168.49.110  `patse your IP Address Here`
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: default
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - default-pool
+EOF
+
+# Step 5: Verify LoadBalancer Gets IP
+`kubectl get svc -n ingress-nginx ingress-nginx-controller`
+# Step 6: Check Ingress
+`kubectl get ingress -n tasklist`
+# Step 7: Update Hosts File
+# Get the LoadBalancer IP
+LB_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+# Add to hosts
+`echo "$LB_IP tasklist.local" | sudo tee -a /etc/hosts`
