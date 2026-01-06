@@ -4,6 +4,8 @@ metadata:
   name: tasklist-backend
   labels:
     app: tasklist-backend
+    appdynamics.app: TaskListAPI
+    appdynamics.tier: Backend
 spec:
   replicas: 2
   selector:
@@ -13,6 +15,8 @@ spec:
     metadata:
       labels:
         app: tasklist-backend
+        appdynamics.app: TaskListAPI
+        appdynamics.tier: Backend
     spec:
       containers:
         - name: backend
@@ -35,6 +39,35 @@ spec:
                   key: DB_PASSWORD
             - name: SPRING_PROFILES_ACTIVE
               value: docker
+            # AppDynamics configuration
+            - name: APPDYNAMICS_CONTROLLER_HOST_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: tasklist-secrets
+                  key: APPD_CONTROLLER_HOST
+            - name: APPDYNAMICS_AGENT_ACCOUNT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: tasklist-secrets
+                  key: APPD_ACCOUNT_NAME
+            - name: APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tasklist-secrets
+                  key: APPD_ACCESS_KEY
+            - name: APPDYNAMICS_AGENT_APPLICATION_NAME
+              value: "TaskListAPI"
+            - name: APPDYNAMICS_AGENT_TIER_NAME
+              value: "Backend"
+            - name: APPDYNAMICS_AGENT_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: JAVA_TOOL_OPTIONS
+              value: >
+                -javaagent:/opt/appdynamics/java-agent/javaagent.jar
+                -Dappdynamics.controller.ssl.enabled=true
+                -Dappdynamics.controller.port=443
           readinessProbe:
             tcpSocket:
               port: 8080

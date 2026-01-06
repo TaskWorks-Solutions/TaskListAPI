@@ -27,6 +27,7 @@ WORKDIR /app
 RUN groupadd -r app && useradd -r -g app app
 
 COPY --from=build /app/target/*.jar app.jar
+COPY --chown=app:app appdynamics/java-agent/ /opt/appdynamics/
 
 RUN chown -R app:app /app
 USER app
@@ -36,4 +37,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-javaagent:/opt/appdynamics/java-agent/javaagent.jar", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
