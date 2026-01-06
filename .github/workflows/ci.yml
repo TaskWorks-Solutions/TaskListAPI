@@ -50,7 +50,7 @@ jobs:
           echo "Postgres is ready!"
 
       - name: Run Maven tests
-        run: mvn clean test -e
+        run: mvn -s .github/maven-settings.xml clean test -e
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/tasklist
           SPRING_DATASOURCE_USERNAME: tasklist_user
@@ -98,7 +98,7 @@ jobs:
           cache: maven
 
       - name: Build with Maven
-        run: mvn clean package -DskipTests
+        run: mvn -s .github/maven-settings.xml clean package -DskipTests
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
