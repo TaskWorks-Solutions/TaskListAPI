@@ -8,12 +8,13 @@ WORKDIR /app
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
+COPY .github/maven-settings.xml .github/maven-settings.xml
 
 RUN chmod +x mvnw
-RUN ./mvnw dependency:go-offline -B
+RUN ./mvnw -s .github/maven-settings.xml dependency:go-offline -B
 
 COPY src src
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw -s .github/maven-settings.xml clean package -DskipTests
 
 # ===============================
 # Runtime stage
