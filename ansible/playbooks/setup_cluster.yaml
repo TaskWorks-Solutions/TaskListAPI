@@ -1,0 +1,29 @@
+- name: Setup Kubernetes cluster
+  hosts: local
+  gather_facts: false
+
+  tasks:
+    - name: Verify kubectl access
+      command: kubectl version --client
+      register: kubectl_check
+      failed_when: kubectl_check.rc != 0
+
+    - name: Create tasklist namespace
+      command: kubectl create namespace tasklist
+      ignore_errors: true
+
+    - name: Create argocd namespace
+      command: kubectl create namespace argocd
+      ignore_errors: true
+
+    - name: Install Argo CD
+      command: >
+        kubectl apply -n argocd
+        -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+    - name: Wait for Argo CD server
+      command: kubectl rollout status deployment/argocd-server -n argocd
+      retries: 10
+      delay: 15
+      register: rollout
+      until: rollout.rc == 0

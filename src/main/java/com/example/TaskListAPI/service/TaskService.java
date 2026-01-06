@@ -28,7 +28,7 @@ public class TaskService {
     
     public TaskResponse createTask(TaskRequest taskRequest) {
         Task task = taskMapper.toEntity(taskRequest);
-        Task savedTask = taskRepository.save(task);
+        Task savedTask = taskRepository.saveAndFlush(task);
         return taskMapper.toResponse(savedTask);
     }
     
