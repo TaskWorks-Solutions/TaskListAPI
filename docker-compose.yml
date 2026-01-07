@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: tasklist-postgres
+    environment:
+      POSTGRES_DB: tasklist
+      POSTGRES_USER: ${DB_USERNAME:-tasklist_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - tasklist-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-tasklist_user} -d tasklist"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Backend Application (Spring Boot)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tasklist-backend
+    environment:
+
+      # MUST match Spring Boot properties:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tasklist
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-tasklist_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-password}
+
+      SPRING_PROFILES_ACTIVE: docker
+
+      # Enable actuator for container healthchecks
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "*"
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tasklist-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  tasklist-network:
+    driver: bridge
