@@ -1,0 +1,5 @@
+1767693653371
+org.slf4j
+org.slf4j.spi
+org.slf4j.event
+org.slf4j.helpers
