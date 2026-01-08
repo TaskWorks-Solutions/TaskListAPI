@@ -28,11 +28,9 @@ WORKDIR /app
 # Install curl for healthchecks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -r app && useradd -r -g app app
-
-# Create AppDynamics directory and set permissions
-RUN mkdir -p /opt/appdynamics/java-agent/ver25.12.0.37551/logs && \
+# Create non-root user and set up AppDynamics directory structure
+RUN groupadd -r app && useradd -r -g app app && \
+    mkdir -p /opt/appdynamics/java-agent/ver25.12.0.37551/logs/LocalDocker && \
     chown -R app:app /opt/appdynamics
 
 # Copy the built application JAR
@@ -57,6 +55,7 @@ ENV APPDYNAMICS_CONTROLLER_PORT=443
 ENV APPDYNAMICS_CONTROLLER_SSL_ENABLED=true
 ENV APPDYNAMICS_AGENT_ACCOUNT_NAME=theater202601042150029
 ENV APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY=x5nmpxeaod5g
+ENV APPDYNAMICS_AGENT_LOG_DIR=/opt/appdynamics/java-agent/ver25.12.0.37551/logs/LocalDocker
 
 # Expose application port
 EXPOSE 8080
@@ -65,8 +64,9 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-# Entrypoint
+# Entrypoint with Java 17 compatibility flags
 ENTRYPOINT ["sh", "-c", "java \
+  --add-opens java.base/java.lang=ALL-UNNAMED \
   -javaagent:/opt/appdynamics/java-agent/javaagent.jar \
   -Dappdynamics.controller.hostName=$APPDYNAMICS_CONTROLLER_HOST_NAME \
   -Dappdynamics.controller.port=$APPDYNAMICS_CONTROLLER_PORT \
@@ -76,5 +76,6 @@ ENTRYPOINT ["sh", "-c", "java \
   -Dappdynamics.agent.applicationName=$APPDYNAMICS_AGENT_APPLICATION_NAME \
   -Dappdynamics.agent.tierName=$APPDYNAMICS_AGENT_TIER_NAME \
   -Dappdynamics.agent.nodeName=$APPDYNAMICS_AGENT_NODE_NAME \
+  -Dappdynamics.agent.logdir=$APPDYNAMICS_AGENT_LOG_DIR \
   -Dspring.profiles.active=prod \
   -jar app.jar"]
