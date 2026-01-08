@@ -1,6 +1,0 @@
-1767693653703
-io.opentelemetry.sdk.autoconfigure.spi.metrics
-io.opentelemetry.sdk.autoconfigure.spi
-io.opentelemetry.sdk.autoconfigure.spi.logs
-io.opentelemetry.sdk.autoconfigure.spi.traces
-io.opentelemetry.sdk.autoconfigure.spi.internal

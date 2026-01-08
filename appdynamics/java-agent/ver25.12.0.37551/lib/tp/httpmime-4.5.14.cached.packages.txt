@@ -1,3 +1,0 @@
-1767693653904
-org.apache.http.entity.mime
-org.apache.http.entity.mime.content
