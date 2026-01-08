@@ -31,13 +31,18 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Create non-root user
 RUN groupadd -r app && useradd -r -g app app
 
+# Create AppDynamics directory and set permissions
+RUN mkdir -p /opt/appdynamics/java-agent/ver25.12.0.37551/logs && \
+    chown -R app:app /opt/appdynamics
+
 # Copy the built application JAR
 COPY --from=build /app/target/*.jar app.jar
 
-# Copy local AppDynamics agent
-COPY --chown=app:app appdynamics/java-agent/ /opt/appdynamics/java-agent/
+# Copy AppDynamics agent files
+COPY --chown=app:app appdynamics/java-agent/javaagent.jar /opt/appdynamics/java-agent/javaagent.jar
+COPY --chown=app:app appdynamics/java-agent/ver25.12.0.37551 /opt/appdynamics/java-agent/ver25.12.0.37551
 
-# Set ownership to non-root user
+# Set ownership
 RUN chown -R app:app /app /opt/appdynamics
 
 # Switch to non-root user
