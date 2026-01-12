@@ -1,16 +1,23 @@
-# Discription: 
-CRUD Task Management System
-Status Filtering
-PostgreSQL 15
-Swagger/OpenAPI
-Docker support
-CI/CD (GitHub Actions)
-Deployment on microk8s + ArgoCD
-Configuration Management with Ansible
-Functional Testing with JMeter
-Dev environment: WSL2 on Ubuntu
+# TaskList API
+
+A comprehensive Task Management System with monitoring and deployment capabilities.
+
+## 🚀 Features
+
+- CRUD Task Management
+- Status Filtering
+- PostgreSQL 15 Database
+- Swagger/OpenAPI Documentation
+- Docker & Docker Compose Support
+- CI/CD with GitHub Actions
+- Kubernetes Deployment (microk8s + ArgoCD)
+- Configuration Management with Ansible
+- Performance Monitoring with AppDynamics
+- Functional Testing with JMeter
+- Development Environment: WSL2 on Ubuntu
 
 # Project Structure
+```
 TaskListAPI/
  ├── src/main/java/com/example/TaskListAPI
  │    ├── controller
@@ -21,7 +28,7 @@ TaskListAPI/
  │    ├── repository
  │    │     └── TaskRepository.java
  │    ├── dto
- │    │     └── TaskRequest.java
+ │    │     ├── TaskRequest.java
  │    │     └── TaskResponse.java
  │    ├── entity
  │    │     └── Task.java
@@ -36,12 +43,23 @@ TaskListAPI/
  │
  ├── src/main/resources
  │    ├── application.yaml
- │    ├── db/migration/V1__init.sql   (Flyway)
+ │    └── db/migration/V1__init.sql   (Flyway)
  │
+ ├── appdynamics/
+ │    ├── java-agent/                # AppDynamics Java Agent
+ │    │    ├── conf/
+ │    │    │   └── controller-info.xml  # AppDynamics config
+ │    │    ├── javaagent.jar
+ │    │    └── ...
+ │    └── README.md                  # AppDynamics setup guide
+ │
+ ├── ansible/                        # Ansible playbooks
+ ├── k8s/                            # Kubernetes manifests
  ├── Dockerfile
  ├── docker-compose.yml
  ├── pom.xml
  └── README.md
+```
 
 # Ansible Playbooks
 ansible/
@@ -64,14 +82,46 @@ k8s/
       ├── dev/
       └── prod/
 
-# maven compile
+## 🛠️ Build & Run
+
+### Local Development
+
+```bash
+# Build the application
 mvn clean package
 
-# maven test
+# Run tests
 mvn clean test
 
-# if you wanna skip the mvn test
+# Skip tests during build
 mvn clean package -DskipTests
+
+# Run with Maven
+mvn spring-boot:run
+```
+
+### Docker
+
+```bash
+# Build and start containers
+docker-compose up -d --build
+
+# Stop containers
+docker-compose down
+
+# View logs
+docker-compose logs -f
+```
+
+## 📊 Monitoring with AppDynamics
+
+The application includes AppDynamics Java Agent for performance monitoring. To set up:
+
+1. Update `appdynamics/java-agent/conf/controller-info.xml` with your AppDynamics credentials
+2. The agent is automatically configured in the Docker setup
+3. Access your AppDynamics dashboard to monitor application performance
+
+For detailed setup instructions, see [appdynamics/README.md](appdynamics/README.md)
 
 # build the container run it once for the first tim
  docker-compose up -d --build     
