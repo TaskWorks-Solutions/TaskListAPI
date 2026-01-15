@@ -35,6 +35,10 @@ COPY --chown=app:app appdynamics/java-agent/ /opt/appdynamics/java-agent/
 RUN chmod -R 755 /opt/appdynamics/java-agent && \
     chown -R app:app /opt/appdynamics/java-agent
 
+# Copy entrypoint script and make executable
+COPY --chown=app:app docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
+
 USER app
 
 EXPOSE 8080
@@ -42,20 +46,21 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-# Entrypoint uses standard ENV variables for AppD registration
-# Entrypoint with Hardcoded Agent Properties for guaranteed registration
-ENTRYPOINT ["sh", "-c", "java \
-  --add-opens java.base/java.lang=ALL-UNNAMED \
+# Set default Java options for the application
+ENV JAVA_OPTS="--add-opens java.base/java.lang=ALL-UNNAMED \
   --add-opens java.base/java.util=ALL-UNNAMED \
   --add-opens java.base/java.net=ALL-UNNAMED \
   --add-opens java.base/java.io=ALL-UNNAMED \
   --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED \
-  -javaagent:/opt/appdynamics/java-agent/javaagent.jar \
   -Dappdynamics.agent.applicationName=TaskListAPI \
   -Dappdynamics.agent.tierName=Backend \
   -Dappdynamics.agent.nodeName=Backend_Docker_Node \
   -Dappdynamics.agent.reuse.nodeName=true \
   -Dappdynamics.agent.reuse.nodeName.prefix=Backend_Node \
   -Dappdynamics.agent.logs.dir=/opt/appdynamics/java-agent/logs \
-  -Dspring.profiles.active=prod \
-  -jar app.jar"]
+  -Dspring.profiles.active=prod"
+
+# Set default AppDynamics agent location
+ENV APPD_AGENT_JAR=/opt/appdynamics/java-agent/javaagent.jar
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
