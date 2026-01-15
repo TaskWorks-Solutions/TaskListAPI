@@ -2,12 +2,13 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tasklist-backend
+  namespace: tasklist
   labels:
     app: tasklist-backend
     appdynamics.app: TaskListAPI
     appdynamics.tier: Backend
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: tasklist-backend
@@ -20,10 +21,40 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ghcr.io/taskworks-solutions/tasklistapi:latest # Use the latest image
-          imagePullPolicy: Always
+          image: ghcr.io/taskworks-solutions/tasklistapi:latest
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
           ports:
             - containerPort: 8080
+              name: http
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+              scheme: HTTP
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+              scheme: HTTP
+            periodSeconds: 15
+            failureThreshold: 30
           env:
             - name: DB_URL
               value: jdbc:postgresql://tasklist-postgres:5432/tasklist
@@ -39,42 +70,32 @@ spec:
                   key: DB_PASSWORD
             - name: SPRING_PROFILES_ACTIVE
               value: docker
-            # AppDynamics configuration
-            - name: APPDYNAMICS_CONTROLLER_HOST_NAME
+            - name: APPD_CONTROLLER_HOST
+              value: "theater202601042150029.saas.appdynamics.com"
+            - name: APPD_CONTROLLER_PORT
+              value: "443"
+            - name: APPD_ACCOUNT_NAME
+              value: "theater202601042150029"
+            - name: APPD_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: tasklist-secrets
-                  key: APPD_CONTROLLER_HOST
-            - name: APPDYNAMICS_AGENT_ACCOUNT_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: tasklist-secrets
-                  key: APPD_ACCOUNT_NAME
-            - name: APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: tasklist-secrets
-                  key: APPD_ACCESS_KEY
-            - name: APPDYNAMICS_AGENT_APPLICATION_NAME
-              value: "TaskListAPI"
-            - name: APPDYNAMICS_AGENT_TIER_NAME
-              value: "Backend"
-            - name: APPDYNAMICS_AGENT_NODE_NAME
+                  name: appd-access-secret
+                  key: access-key
+            - name: APPD_AGENT_JAR
+              value: "/opt/appdynamics/java-agent/javaagent.jar"
+            - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: JAVA_TOOL_OPTIONS
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: JAVA_OPTS
               value: >
-                -javaagent:/opt/appdynamics/java-agent/javaagent.jar
+                -Dappdynamics.agent.applicationName=TaskListAPI
+                -Dappdynamics.agent.tierName=Backend
+                -Dappdynamics.agent.reuse.nodeName=true
+                -Dappdynamics.agent.reuse.nodeName.prefix=Backend_Node
+                -Dappdynamics.agent.logs.dir=/opt/appdynamics/java-agent/logs
                 -Dappdynamics.controller.ssl.enabled=true
-                -Dappdynamics.controller.port=443
-          readinessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 20
-            periodSeconds: 10
-          livenessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 60
-            periodSeconds: 30

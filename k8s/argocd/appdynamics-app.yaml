@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: appdynamics-cluster-agent
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/TaskWorks-Solutions/TaskListAPI.git
+    targetRevision: main
+    path: appdynamics/cluster-agent
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: appdynamics
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: appd-access-secret
+      namespace: appdynamics

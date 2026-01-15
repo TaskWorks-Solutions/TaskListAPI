@@ -1,37 +1,37 @@
-# TaskList API with AppDynamics Monitoring
 
-A Spring Boot Task Management API with PostgreSQL database and AppDynamics Java APM Agent integration for performance monitoring.
 
-## 📋 Prerequisites
+# TaskList API with AppDynamics Full-Stack Monitoring
 
-- Docker & Docker Desktop (with Compose)
-- Java 17 (for local development)
-- AppDynamics SaaS Account (Controller URL and Access Key)
+This project consists of a Spring Boot Task Management API connected to a PostgreSQL database, monitored by both the AppDynamics Java APM Agent (for code-level visibility) and the AppDynamics Kubernetes Cluster Agent (for infrastructure visibility).
 
-## 🛠️ Setup & Installation
+## Project Architecture
 
-### 1. Configure Environment
+The monitoring ecosystem is divided into two primary areas:
 
-Create a `.env` file in the root directory with the following variables:
+1. **Java APM Agent (The Code Watcher):** Injected into the JVM of the `tasklist-backend`. It tracks response times, errors, and database calls between the API and PostgreSQL.
+2. **Cluster Agent (The Infrastructure Watcher):** A Kubernetes operator-based agent that monitors the health of the MicroK8s cluster, pod restarts, and resource limits.
+
+## Prerequisites
+
+* MicroK8s or Docker Desktop (with Kubernetes enabled)
+* Java 17 (for local development)
+* AppDynamics SaaS Account (Controller URL and Access Key)
+
+## 1. Java APM Agent Configuration (Docker Compose)
+
+### Configure Environment
+
+Create a `.env` file in the root directory:
 
 ```bash
 DB_USERNAME=tasklist_user
 DB_PASSWORD=your_secure_password
+
 ```
 
-### 2. AppDynamics Agent Configuration
+### Update Agent Settings
 
-The agent files are located in `/appdynamics/java-agent/`. Ensure the directory contains:
-
-- `javaagent.jar` - Main agent JAR
-- `java9-impl.jar` - Required for Java 17
-- `lib/` - Core agent libraries
-- `conf/` - Configuration files
-- `ver25.12.0.37551/` - Version-specific binaries
-
-### 3. Update Agent Configuration
-
-Edit `appdynamics/java-agent/conf/controller-info.xml` with your AppDynamics controller details:
+Edit `appdynamics/java-agent/conf/controller-info.xml` with your controller details:
 
 ```xml
 <controller-info>
@@ -40,104 +40,189 @@ Edit `appdynamics/java-agent/conf/controller-info.xml` with your AppDynamics con
     <controller-ssl-enabled>true</controller-ssl-enabled>
     <account-name>your-account-name</account-name>
     <account-access-key>your-access-key</account-access-key>
-    <application-name>TaskListAPI</application-name>
+    <application-name>TaskList-K8s-App</application-name>
     <tier-name>Backend</tier-name>
 </controller-info>
+
 ```
 
-### 4. Run the Application
+---
 
-Build and start the entire stack (Database + API + Agent):
+## 2. Kubernetes Cluster Agent Configuration
+
+The Cluster Agent uses a Custom Resource Definition (CRD) approach managed by the AppDynamics Operator.
+
+### Critical Manual Patches
+
+To ensure stability in local environments, the following patches were applied:
+
+1. **Metrics Server:** Added `--kubelet-insecure-tls` to allow MicroK8s to report resource metrics despite self-signed certificates.
+2. **Credential Injection:** Injected `APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY` directly into the deployment environment to bypass strict CRD decoding errors.
+
+### Deploying the Cluster Agent
+
+The configuration is stored in `20-cluster-agent.yaml`. To apply:
 
 ```bash
-# Stop any existing containers and clean volumes
-docker-compose down -v
+kubectl apply -f ~/tasklist-project/appdynamics/cluster-agent/20-cluster-agent.yaml
 
-# Build and start
-docker-compose up -d --build
 ```
 
-## 🔍 Verifying the Deployment
+---
 
-### Check Logs
+## 3. Post-Restart Workflow (Maintenance Routine)
 
-Wait about 30-60 seconds, then check the logs to ensure the Agent has registered:
+If you shut down your host machine or restart WSL, follow these steps to restore monitoring:
+
+### Start the Cluster
 
 ```bash
-docker logs -f tasklist-backend
+microk8s start
+microk8s status --wait-ready
+
 ```
 
-Look for: `Started AppDynamics Java Agent Successfully`
+### Run Automated Verification
 
-### Health Check
-
-Verify the API is live:
+This script verifies the metrics-server, re-applies patches, and checks pod health.
 
 ```bash
-curl -X GET "http://localhost:8080/actuator/health" -H "accept: */*"
+~/tasklist-project/verify-appd.sh
+
 ```
 
-## 🧪 Demo: Populating Data (Traffic Simulation)
+### Monitor Agent Registration
 
-To see data in your AppDynamics Flow Map, run these commands to create sample tasks:
+Check the handshake between the cluster and the AppDynamics SaaS Controller:
 
 ```bash
-# Create sample tasks
-curl -X POST "http://localhost:8080/api/tasks" \
+kubectl logs -f -n appdynamics -l clusterAgent_cr=tasklist-cluster-agent
+
+```
+
+---
+
+## 4. Daily Operations Cheat Sheet
+
+### Monitoring and Logs
+
+* **Follow Cluster Agent Logs:** `kubectl logs -f -n appdynamics -l clusterAgent_cr=tasklist-cluster-agent`
+* **Check All Pod Status:** `kubectl get pods -A`
+* **Check Java Agent Logs:** `docker exec -it tasklist-backend tail -f /opt/appdynamics/java-agent/logs/agent.log`
+
+### Management and Troubleshooting
+
+* **Restart Cluster Agent:** `kubectl rollout restart deployment tasklist-cluster-agent -n appdynamics`
+* **Re-inject Access Key:** `kubectl set env deployment/tasklist-cluster-agent -n appdynamics APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY=x5nmpxeaod5g`
+* **Verify Metrics Server:** `kubectl get deployment metrics-server -n kube-system`
+
+---
+
+## 5. Monitoring in AppDynamics
+
+Once the agents are registered, navigate to your controller:
+
+### Infrastructure (Servers > Clusters > TaskListAPI)
+
+* **Pod Health:** View restarts, crashes, and resource pressure.
+* **Inventory:** Monitor Deployments, Services, and Nodes.
+
+### Applications (Applications > TaskList-K8s-App)
+
+* **Flow Map:** Visual path from the API to PostgreSQL.
+* **Business Transactions:** Performance of `/api/tasks` endpoints.
+* **JVM Metrics:** Memory heap usage and garbage collection.
+
+---
+
+## Troubleshooting Checklist
+
+1. **Error: "accessKey not specified":** The Deployment lost its environment variable. Re-run the "Re-inject Access Key" command from the cheat sheet.
+2. **Dashboard shows 0 Nodes/Pods:** Ensure the `metrics-server` is running and the `--kubelet-insecure-tls` flag is present.
+3. **No Java Data:** Verify `controller-info.xml` contains the correct account credentials.
+
+### File Locations
+
+* **Configs:** `~/tasklist-project/appdynamics/config/`
+* **Verification Script:** `~/tasklist-project/verify-appd.sh`
+
+To get the most out of your AppDynamics setup, you can run specific tests to see how the agents react. These scenarios will generate the visual data you need to verify that both the **Java APM Agent** and the **Cluster Agent** are working correctly.
+
+---
+
+### Scenario 1: Traffic and Flow Map Visualization
+
+This test populates the "Flow Map" and "Business Transactions" in the Application view.
+
+1. **Action:** Run a loop to generate multiple tasks in your API.
+```bash
+for i in {1..10}; do
+  curl -X POST "http://localhost:8080/api/tasks" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Setup AppD","description":"Verify Agent","status":"COMPLETED","priority":"HIGH"}'
+  -d "{\"title\":\"Task $i\",\"description\":\"Automatic Load Test\",\"status\":\"IN_PROGRESS\",\"priority\":\"MEDIUM\"}"
+done
 
-curl -X POST "http://localhost:8080/api/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Database Test","description":"Check Migrations","status":"IN_PROGRESS","priority":"MEDIUM"}'
-
-# View all tasks
-curl -X GET "http://localhost:8080/api/tasks" -H "accept: */*"
 ```
 
-## 📊 Monitoring in AppDynamics
 
-After running the demo tasks, log into your AppDynamics Controller to view:
+2. **Where to look:** **Applications > TaskList-K8s-App > Dashboard**.
+3. **Expectation:** You will see a visual line (flow) connecting your **Backend** tier to your **Postgres** database. The "Calls per Minute" should increase.
 
-1. **Application Flow Map**: Visual path from the API to PostgreSQL
-2. **Business Transactions**: Performance of API endpoints
-3. **Database Visibility**: SQL queries and their performance
-4. **JVM Metrics**: Memory, threads, and garbage collection
+---
 
-## 🔄 Common Operations
+### Scenario 2: Service Disruption (Pod Health)
 
-### Restart the Application
+This test shows how the Cluster Agent tracks infrastructure stability.
 
+1. **Action:** Manually delete a running pod to force Kubernetes to restart it.
 ```bash
-docker-compose restart backend
+kubectl delete pod -n tasklist -l app=tasklist-backend
+
 ```
 
-### View AppDynamics Logs
 
+2. **Where to look:** **Servers > Clusters > TaskListAPI > Events**.
+3. **Expectation:** You will see a "Pod Deleted" and "Pod Created" event. In the **Pods** tab, you will see the restart count increment.
+
+---
+
+### Scenario 3: Database Latency and SQL Visibility
+
+This test verifies that the Java Agent is successfully "sniffing" the database calls.
+
+1. **Action:** Fetch all tasks multiple times.
 ```bash
-# View logs in real-time
-docker exec -it tasklist-backend tail -f /opt/appdynamics/java-agent/logs/ver25.12.0.37551/LocalDocker/agent.log
+curl -X GET "http://localhost:8080/api/tasks"
 
-# Or copy logs to host
-docker cp tasklist-backend:/opt/appdynamics/java-agent/logs ./appdynamics-logs
 ```
 
-### Stop the Application
 
+2. **Where to look:** **Applications > TaskList-K8s-App > Database Calls** (or the **Databases** top-level menu).
+3. **Expectation:** You will see the specific SQL query (e.g., `SELECT * FROM tasks`) and exactly how many milliseconds the database took to respond.
+
+---
+
+### Scenario 4: Resource Limits and Capacity
+
+This test helps you identify if your Kubernetes configuration is missing safety rails.
+
+1. **Action:** No action required if you haven't set CPU/Memory limits in your YAML.
+2. **Where to look:** **Servers > Clusters > TaskListAPI > Dashboard**. Look at the "Pod Issues" or "No Resource Limits" widget.
+3. **Expectation:** AppDynamics will flag your pods as "Risk" items because they don't have defined CPU or Memory limits, which could lead to node instability.
+
+---
+
+### Scenario 5: Errors and Exceptions
+
+This test shows how AppDynamics captures code-level failures.
+
+1. **Action:** Send a malformed request to the API (e.g., empty body or wrong data type).
 ```bash
-docker-compose down
+curl -X POST "http://localhost:8080/api/tasks" -H "Content-Type: application/json" -d '{"bad-data": "true"}'
+
 ```
 
-## 🚨 Troubleshooting
 
-- **Agent Not Starting**: Check `docker logs tasklist-backend` for Java agent errors
-- **No Data in Controller**: Verify network connectivity to AppDynamics controller
-- **Database Issues**: Check PostgreSQL logs with `docker logs tasklist-postgres`
-
-## 📚 Additional Resources
-
-- [AppDynamics Documentation](https://docs.appdynamics.com/)
-- [Spring Boot with AppDynamics](https://docs.appdynamics.com/21.3/en/application-monitoring/install-app-server-agents/java-agent)
-- [Docker Compose Reference](https://docs.docker.com/compose/)
-```
+2. **Where to look:** **Applications > TaskList-K8s-App > Troubleshooting > Errors**.
+3. **Expectation:** You will see 400 or 500 error codes recorded, and you can click into them to see the Java Stack Trace.
 
