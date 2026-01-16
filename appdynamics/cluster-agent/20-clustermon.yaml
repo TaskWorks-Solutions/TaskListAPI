@@ -1,0 +1,13 @@
+apiVersion: cluster.appdynamics.com/v1
+kind: ClusterMon
+metadata:
+  name: tasklist-cluster-monitor
+  namespace: appdynamics
+spec:
+  controllerInfo:
+    url: "https://theater202601042150029.saas.appdynamics.com"
+    account: "theater202601042150029"
+    accessKeySecret: "appd-access-secret"
+  clusterConfig:
+    clusterName: "TaskListAPI-Cluster"
+    # The O2 Operator handles resource limits and DNS automatically

@@ -1,0 +1,62 @@
+- name: Setup Kubernetes cluster
+  hosts: all
+  gather_facts: false
+
+  vars:
+    # Set the base directory to ensure paths are always correct
+    project_root: "/home/siseko/tasklist-project"
+    appd_controller_host: "{{ lookup('env', 'APPD_CONTROLLER_HOST') | default('theater202601042150029.saas.appdynamics.com', true) }}"
+    appd_account_name: "{{ lookup('env', 'APPD_ACCOUNT_NAME') | default('theater202601042150029', true) }}"
+    appd_access_key: "{{ lookup('env', 'APPD_ACCESS_KEY') | default('x5nmpxeaod5g', true) }}"
+
+  tasks:
+    - name: Verify kubectl access
+      command: kubectl version --client
+      register: kubectl_check
+      changed_when: false
+
+    - name: Create required namespaces
+      command: "kubectl create namespace {{ item }}"
+      loop:
+        - tasklist
+        - argocd
+        - appdynamics
+      ignore_errors: true
+
+    - name: Create AppDynamics access secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: appd-access-secret
+            namespace: tasklist
+          type: Opaque
+          stringData:
+            access-key: "{{ appd_access_key }}"
+
+    - name: Deploy PostgreSQL
+      command: kubectl apply -f k8s/base/postgres.yaml -n tasklist
+      args:
+        chdir: "{{ project_root }}"
+
+    - name: Wait for PostgreSQL to be ready
+      command: kubectl wait --for=condition=ready pod -l app=postgres -n tasklist --timeout=300s
+
+    - name: Deploy TaskList application
+      command: kubectl apply -f k8s/base/ -n tasklist
+      args:
+        chdir: "{{ project_root }}"
+
+    - name: Install Argo CD
+      command: >
+        kubectl apply -n argocd
+        -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+    - name: Wait for Argo CD server
+      command: kubectl rollout status deployment/argocd-server -n argocd
+      register: rollout
+      until: rollout.rc == 0
+      retries: 20
+      delay: 15

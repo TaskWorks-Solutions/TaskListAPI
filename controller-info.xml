@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<controller-info>
+    <controller-host>theater202601042150029.saas.appdynamics.com</controller-host>
+    <controller-port>443</controller-port>
+    <controller-ssl-enabled>true</controller-ssl-enabled>
+    <account-name>selfservice-free-account</account-name>
+    <account-access-key>x5nmpxeaod5g</account-access-key>
+    <application-name>TaskListAPI</application-name>
+    <tier-name>Backend</tier-name>
+    <node-name>Backend_Docker_Node_01</node-name>
+</controller-info>
