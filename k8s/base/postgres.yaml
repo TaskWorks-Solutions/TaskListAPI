@@ -63,8 +63,8 @@ spec:
                 - pg_isready
                 - -U
                 - tasklist_user
-		- -d
-		- tasklist
+                - -d
+                - tasklist
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
@@ -73,8 +73,8 @@ spec:
                 - pg_isready
                 - -U
                 - tasklist_user
-		- -d
-		- tasklist
+                - -d
+                - tasklist
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
