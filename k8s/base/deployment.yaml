@@ -8,7 +8,7 @@ metadata:
     appdynamics.app: TaskListAPI
     appdynamics.tier: Backend
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: tasklist-backend
@@ -19,6 +19,20 @@ spec:
         appdynamics.app: TaskListAPI
         appdynamics.tier: Backend
     spec:
+      # -----------------------------
+      # Wait for DB before starting
+      # -----------------------------
+      initContainers:
+        - name: db-wait
+          image: postgres:15
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h tasklist-postgres -p 5432; do
+                echo "waiting for db..."
+                sleep 5
+              done
       containers:
         - name: backend
           image: ghcr.io/taskworks-solutions/tasklistapi:latest
@@ -33,28 +47,41 @@ spec:
             - containerPort: 8080
               name: http
               protocol: TCP
+
+          # -----------------------------
+          # Probes
+          # -----------------------------
           startupProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            failureThreshold: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
+            initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 10
-            failureThreshold: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
+            initialDelaySeconds: 60
             periodSeconds: 15
-            failureThreshold: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # -----------------------------
+          # Environment variables
+          # -----------------------------
           env:
             - name: DB_URL
               value: jdbc:postgresql://tasklist-postgres:5432/tasklist
@@ -71,18 +98,18 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: docker
             - name: APPD_CONTROLLER_HOST
-              value: "theater202601042150029.saas.appdynamics.com"
+              value: theater202601042150029.saas.appdynamics.com
             - name: APPD_CONTROLLER_PORT
               value: "443"
             - name: APPD_ACCOUNT_NAME
-              value: "theater202601042150029"
+              value: theater202601042150029
             - name: APPD_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: appd-access-secret
                   key: access-key
             - name: APPD_AGENT_JAR
-              value: "/opt/appdynamics/java-agent/javaagent.jar"
+              value: /opt/appdynamics/java-agent/javaagent.jar
             - name: POD_NAME
               valueFrom:
                 fieldRef:
