@@ -109,8 +109,8 @@ spec:
             - name: APPD_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: appd-access-secret
-                  key: access-key
+                  name: tasklist-secrets
+                  key: APPD_ACCESS_KEY
             - name: APPD_AGENT_JAR
               value: /opt/appdynamics/java-agent/javaagent.jar
             - name: POD_NAME
