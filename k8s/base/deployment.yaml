@@ -50,36 +50,36 @@ spec:
               protocol: TCP
 
           # -----------------------------
-          # Probes (6 minute startup window)
-          # App + AppDynamics agent need time to initialize
-          # DB init container ensures Postgres is ready
+          # Probes (aggressive startup window)
+          # App + AppDynamics agent need extended time
+          # Health endpoint can be slow during initialization
           # -----------------------------
           startupProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 360
+            initialDelaySeconds: 480
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 60
+            timeoutSeconds: 15
+            failureThreshold: 120
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 360
+            initialDelaySeconds: 480
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            timeoutSeconds: 15
+            failureThreshold: 5
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 360
+            initialDelaySeconds: 540
             periodSeconds: 15
-            timeoutSeconds: 5
+            timeoutSeconds: 10
             failureThreshold: 3
 
           # -----------------------------
