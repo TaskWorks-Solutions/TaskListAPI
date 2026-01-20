@@ -8,6 +8,7 @@ metadata:
     appdynamics.app: TaskListAPI
     appdynamics.tier: Backend
 spec:
+  revisionHistoryLimit: 2
   replicas: 2
   selector:
     matchLabels:
@@ -49,14 +50,16 @@ spec:
               protocol: TCP
 
           # -----------------------------
-          # Probes
+          # Probes (6 minute startup window)
+          # App + AppDynamics agent need time to initialize
+          # DB init container ensures Postgres is ready
           # -----------------------------
           startupProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 60
+            initialDelaySeconds: 360
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 60
@@ -65,7 +68,7 @@ spec:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 30
+            initialDelaySeconds: 360
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -74,7 +77,7 @@ spec:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 60
+            initialDelaySeconds: 360
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
