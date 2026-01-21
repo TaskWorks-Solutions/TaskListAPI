@@ -50,36 +50,37 @@ spec:
               protocol: TCP
 
           # -----------------------------
-          # Probes (aggressive startup window)
-          # App + AppDynamics agent need extended time
-          # Health endpoint can be slow during initialization
+          # Probes (proper startup sequence)
+          # StartupProbe runs first and gates readiness/liveness
           # -----------------------------
           startupProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 480
-            periodSeconds: 10
-            timeoutSeconds: 15
-            failureThreshold: 120
+            initialDelaySeconds: 60    # Start checking after 1 minute
+            periodSeconds: 10          # Check every 10 seconds
+            timeoutSeconds: 5          # 5 seconds is enough for health endpoint
+            failureThreshold: 120      # Allow up to 21 minutes total (60s + 120*10s)
+
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 480
+            initialDelaySeconds: 0     # ⚠️ CRITICAL: Start immediately after startup succeeds
             periodSeconds: 10
-            timeoutSeconds: 15
-            failureThreshold: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 540
+            initialDelaySeconds: 0     # ⚠️ CRITICAL: Start immediately after startup succeeds
             periodSeconds: 15
-            timeoutSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
 
           # -----------------------------
