@@ -11,7 +11,10 @@ spec:
   revisionHistoryLimit: 2
   replicas: 2
   strategy: 
-    type: Recreate
+    type: RollingUpdate  # Changed from Recreate for zero-downtime deployments
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: tasklist-backend
@@ -60,9 +63,9 @@ spec:
               path: /actuator/health
               port: http
               scheme: HTTP
-            initialDelaySeconds: 60    # Start checking after 1 minute
+            initialDelaySeconds: 90    # Start checking after 1.5 minutes
             periodSeconds: 10          # Check every 10 seconds
-            timeoutSeconds: 5          # 5 seconds is enough for health endpoint
+            timeoutSeconds: 30          # 30 seconds is enough for health endpoint
             failureThreshold: 120      # Allow up to 21 minutes total (60s + 120*10s)
 
           readinessProbe:
@@ -72,7 +75,7 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 0     # ⚠️ CRITICAL: Start immediately after startup succeeds
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 90
             failureThreshold: 3
 
           livenessProbe:
@@ -82,7 +85,7 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 0     # ⚠️ CRITICAL: Start immediately after startup succeeds
             periodSeconds: 15
-            timeoutSeconds: 5
+            timeoutSeconds: 90
             failureThreshold: 3
 
           # -----------------------------
@@ -103,6 +106,26 @@ spec:
                   key: DB_PASSWORD
             - name: SPRING_PROFILES_ACTIVE
               value: docker
+
+            # HikariCP Connection Pool Configuration
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+              value: "10"
+            - name: SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE
+              value: "2"
+            - name: SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT
+              value: "20000"
+            - name: SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT
+              value: "300000"           # 5 minutes
+            - name: SPRING_DATASOURCE_HIKARI_MAX_LIFETIME
+              value: "600000"           # 10 minutes (CRITICAL - prevents stale connections)
+            - name: SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME
+              value: "30000"            # 30 seconds (keeps connections alive)
+            - name: SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT
+              value: "3000"             # 3 seconds
+            - name: SPRING_DATASOURCE_HIKARI_LEAK_DETECTION_THRESHOLD
+              value: "60000"            # 1 minute
+
+            # AppDynamics Configuration
             - name: APPD_CONTROLLER_HOST
               value: theater202601042150029.saas.appdynamics.com
             - name: APPD_CONTROLLER_PORT
